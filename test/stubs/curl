@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Fake curl for the tests. Answers from fixture files chosen by URL, logs every call as one JSON
+# line to $STUB_LOG/curl.jsonl, and fails loudly on anything it does not know, so a test can never
+# reach the network.
+#
+# STUB_FIXTURES  deployments/<owner>/<repo>/<environment>/<task with : as _>.json and trees/<sha>.json
+# STUB_RAW_ROOT  optional; serves raw.githubusercontent.com/gemini-hlsw/lucuma-deploy/refs/heads/main/<path>
+set -euo pipefail
+
+method=""
+data=""
+url=""
+output=""
+fail=false
+while [ $# -gt 0 ]; do
+  case $1 in
+    -X | --request)
+      method=$2
+      shift 2
+      ;;
+    -d | --data | --data-raw | --data-binary)
+      data=$2
+      shift 2
+      ;;
+    -o | --output)
+      output=$2
+      shift 2
+      ;;
+    -H | --header | -u | --user | -w | --write-out | --max-time | --connect-timeout | --retry)
+      shift 2
+      ;;
+    -f | --fail | --fail-with-body)
+      fail=true
+      shift
+      ;;
+    -*)
+      # Bundled short flags such as -fsSL.
+      if [[ "$1" =~ ^-[a-zA-Z]+$ ]] && [[ "$1" == *f* ]]; then fail=true; fi
+      shift
+      ;;
+    *)
+      url=$1
+      shift
+      ;;
+  esac
+done
+if [ -z "$method" ]; then
+  if [ -n "$data" ]; then method=POST; else method=GET; fi
+fi
+
+if [ -n "${STUB_LOG:-}" ]; then
+  jq -nc --arg m "$method" --arg u "$url" --arg d "$data" '{method: $m, url: $u, data: $d}' >> "$STUB_LOG/curl.jsonl"
+fi
+
+reject() {
+  echo "stub curl: $*" >&2
+  exit 22
+}
+
+respond_file() {
+  local file=$1
+  if [ ! -f "$file" ]; then
+    if [ "$fail" = true ]; then exit 22; fi
+    echo "404: Not Found"
+    return 0
+  fi
+  if [ -n "$output" ]; then cp "$file" "$output"; else cat "$file"; fi
+}
+
+query_param() {
+  local query=${url#*\?}
+  local pair
+  local IFS='&'
+  for pair in $query; do
+    if [ "${pair%%=*}" = "$1" ]; then
+      echo "${pair#*=}"
+      return 0
+    fi
+  done
+  echo ""
+}
+
+path=${url%%\?*}
+case "$method $path" in
+  "GET https://api.github.com/repos/"*/deployments)
+    repo_path=${path#https://api.github.com/repos/}
+    repo_path=${repo_path%/deployments}
+    env=$(query_param environment)
+    task=$(query_param task)
+    [ -n "$env" ] && [ -n "$task" ] || reject "deployments query without environment or task: $url"
+    file="$STUB_FIXTURES/deployments/$repo_path/$env/${task//:/_}.json"
+    [ -f "$file" ] || reject "no deployments fixture $file for $url"
+    cat "$file"
+    ;;
+  "POST https://api.github.com/repos/"*/deployments)
+    echo "$data" | jq -e '.ref and .environment and .task and .description' > /dev/null \
+      || reject "invalid deployment body: $data"
+    echo '{"id": 1}'
+    ;;
+  "GET https://api.github.com/repos/gemini-hlsw/lucuma-odb/git/trees/"*)
+    sha=${path##*/}
+    [ "$(query_param recursive)" = "1" ] || reject "trees call without recursive=1: $url"
+    file="$STUB_FIXTURES/trees/$sha.json"
+    [ -f "$file" ] || reject "no tree fixture $file"
+    cat "$file"
+    ;;
+  "PATCH https://api.heroku.com/apps/"*/formation)
+    echo "$data" | jq -e '.updates[0].type and .updates[0].docker_image' > /dev/null \
+      || reject "invalid formation body: $data"
+    echo '{}'
+    ;;
+  "POST https://hooks.slack.com/"*)
+    echo "$data" | jq -e '.text' > /dev/null || reject "invalid Slack payload: $data"
+    echo "ok"
+    ;;
+  "GET https://raw.githubusercontent.com/gemini-hlsw/lucuma-deploy/refs/heads/main/"*)
+    [ -n "${STUB_RAW_ROOT:-}" ] || reject "STUB_RAW_ROOT not set for $url"
+    respond_file "$STUB_RAW_ROOT/${path#https://raw.githubusercontent.com/gemini-hlsw/lucuma-deploy/refs/heads/main/}"
+    ;;
+  *)
+    reject "unexpected request: $method $url"
+    ;;
+esac

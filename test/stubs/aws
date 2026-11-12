@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Fake aws CLI for the tests: S3 ls, cp and sync, CloudFront invalidations. Logs every call to
+# $STUB_LOG/aws.log. `s3 ls` fails with "not found" when the path contains a sha listed in
+# $STUB_AWS_MISSING (space separated). `s3 cp` and `s3 sync` insist on --copy-props
+# metadata-directive, and `s3 cp` on --recursive.
+set -euo pipefail
+if [ -n "${STUB_LOG:-}" ]; then echo "$*" >> "$STUB_LOG/aws.log"; fi
+
+fail() {
+  echo "stub aws: $*" >&2
+  exit 1
+}
+
+service=${1:-}
+action=${2:-}
+shift 2 || true
+case "$service $action" in
+  "s3 ls")
+    [ $# -eq 1 ] || fail "s3 ls needs one url"
+    for sha in ${STUB_AWS_MISSING:-}; do
+      if [[ "$1" == *"$sha"* ]]; then fail "not found"; fi
+    done
+    echo "2026-11-05 10:00:00       1234 index.html"
+    ;;
+  "s3 cp" | "s3 sync")
+    [ $# -ge 2 ] || fail "s3 $action needs a source and a target"
+    prefix=""
+    props=false
+    recursive=false
+    previous=""
+    for arg in "$@"; do
+      if [ "$arg" = "--dryrun" ]; then prefix="(dryrun) "; fi
+      if [ "$arg" = "--recursive" ]; then recursive=true; fi
+      if [ "$previous" = "--copy-props" ] && [ "$arg" = "metadata-directive" ]; then props=true; fi
+      previous=$arg
+    done
+    [ "$props" = true ] || fail "s3 $action without --copy-props metadata-directive"
+    [ "$action" = sync ] || [ "$recursive" = true ] || fail "s3 cp without --recursive"
+    echo "${prefix}copy: $1/index.html to $2/index.html"
+    ;;
+  "cloudfront create-invalidation")
+    [ "${1:-}" = "--distribution-id" ] && [ -n "${2:-}" ] || fail "create-invalidation needs --distribution-id"
+    echo "I2FAKE123"
+    ;;
+  *)
+    fail "unexpected command: $service $action $*"
+    ;;
+esac

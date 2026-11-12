@@ -1,0 +1,4 @@
+#!/bin/bash
+# Stub docker for the offline tests: never talks to a daemon, just records what was asked.
+echo "[stub docker] $*"
+exit 0

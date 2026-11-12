@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The tests set GPP_GITHUB_TOKEN and GPP_PROMOTER, so gh must never be called. Fail loudly if it is.
+echo "stub gh: gh must not be called in tests (args: $*)" >&2
+exit 1

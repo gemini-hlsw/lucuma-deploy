@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Fake heroku CLI for the tests: registry login and database backups only.
+set -euo pipefail
+if [ -n "${STUB_LOG:-}" ]; then echo "$*" >> "$STUB_LOG/heroku.log"; fi
+case "${1:-}" in
+  container:login)
+    echo "Login Succeeded"
+    ;;
+  pg:backups:capture)
+    [ "${2:-}" = "--app" ] && [ -n "${3:-}" ] || { echo "stub heroku: missing --app" >&2; exit 1; }
+    echo "Starting backup of postgresql-stub-12345... done"
+    echo "Backing up DATABASE to b123... done"
+    ;;
+  *)
+    echo "stub heroku: unexpected command: $*" >&2
+    exit 1
+    ;;
+esac

@@ -1,0 +1,88 @@
+services:
+  database:
+    # Major version comes from .env: it must match the data already in the volume.
+    # A major bump needs a pg_dumpall/restore (or pg_upgrade).
+    image: 'postgres:${POSTGRES_VERSION:?POSTGRES_VERSION is not set, add it to .env (see template-env)}'
+    container_name: navigate-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - database-volume:/var/lib/postgresql/data
+    ports:
+      - '${EXPOSE_DB_PORT}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '2m'
+        max-file: '5'
+  configs:
+    image: 'noirlab/gpp-nav-configs:${NAVIGATE_TAG:?NAVIGATE_TAG is not set, run navigate update}'
+    container_name: navigate-configs
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@navigate-db:5432/${DB_NAME}
+      - SERVER_PORT=${SERVER_PORT}
+    volumes:
+      - configs-volume:/usr/src/app/dbinit
+    ports:
+      - 4000:4000
+    depends_on:
+      database:
+        condition: service_healthy
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '2m'
+        max-file: '5'
+  server:
+    image: 'noirlab/gpp-nav:${NAVIGATE_TAG:?NAVIGATE_TAG is not set, run navigate update}'
+    container_name: navigate-server
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ${CONFIG_DIR}:/opt/docker/conf/local/
+      - ${LOGS_DIR}:/gemsoft/var/log/navigate/
+      - ${EPHEMERIDES_DIR:?EPHEMERIDES_DIR is not set, add it to .env (see template-env)}:/ephemerides/
+    ports:
+      - '${NAVIGATE_EXPOSE_PORT}:7070'
+      - 5064:5064
+      - 5065:5065
+    environment:
+      - SITE=${SITE}
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '2m'
+        max-file: '5'
+  pgadmin:
+    image: 'dpage/pgadmin4:latest'
+    container_name: navigate-pgadmin
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASS}
+    ports:
+      - '${EXPOSE_PORT_PGA}:80'
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '2m'
+        max-file: '5'
+
+volumes:
+  database-volume:
+    name: navigate-database-volume
+    external: false
+  configs-volume:
+    name: navigate-configs-volume
+    external: false

@@ -1,0 +1,23 @@
+# Database
+# Postgres major version. Must match the data already in the volume (staging 17, prod 16);
+# changing it on an existing deployment needs a pg_dumpall/restore (or pg_upgrade).
+POSTGRES_VERSION=17
+DB_NAME=
+DB_USER=
+DB_PASS=
+EXPOSE_DB_PORT=5432
+
+# Configs API
+SERVER_PORT=4000
+
+# Server
+NAVIGATE_EXPOSE_PORT=9090
+CONFIG_DIR=/home/software/navigate/conf/
+LOGS_DIR=/gemsoft/var/log/gpp/navigate/
+EPHEMERIDES_DIR=
+SITE=
+
+# Pgadmin (Optional)
+PGADMIN_EMAIL=
+PGADMIN_PASS=
+EXPOSE_PORT_PGA=

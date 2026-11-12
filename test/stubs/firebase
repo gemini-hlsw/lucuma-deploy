@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Fake firebase CLI for the tests. The live version of a site defaults to an id derived from the
+# site name; when STUB_STATE_DIR is set, clones are remembered there so a later lookup returns the
+# version that was cloned onto the site.
+set -euo pipefail
+if [ -n "${STUB_LOG:-}" ]; then echo "$*" >> "$STUB_LOG/firebase.log"; fi
+
+fail() {
+  echo "stub firebase: $*" >&2
+  exit 1
+}
+
+live_version() {
+  local site=$1
+  if [ -n "${STUB_STATE_DIR:-}" ] && [ -f "$STUB_STATE_DIR/$site" ]; then
+    cat "$STUB_STATE_DIR/$site"
+  else
+    printf '%s' "$site" | git hash-object --stdin | cut -c1-16
+  fi
+}
+
+cmd=${1:-}
+shift || true
+site=""
+project=""
+json=false
+positional=()
+while [ $# -gt 0 ]; do
+  case $1 in
+    --site) site=$2; shift 2 ;;
+    --project) project=$2; shift 2 ;;
+    --json) json=true; shift ;;
+    -*) fail "unexpected option $1" ;;
+    *) positional+=("$1"); shift ;;
+  esac
+done
+
+case "$cmd" in
+  hosting:clone)
+    [ ${#positional[@]} -eq 2 ] || fail "hosting:clone needs a source and a target"
+    [ -n "$project" ] || fail "hosting:clone without --project"
+    source=${positional[0]}
+    target=${positional[1]}
+    [[ "$target" == *:live ]] || fail "target $target is not a live channel"
+    case $source in
+      *:live) version=$(live_version "${source%:live}") ;;
+      *@*) version=${source#*@} ;;
+      *) fail "unexpected source $source" ;;
+    esac
+    if [ -n "${STUB_STATE_DIR:-}" ]; then
+      echo "$version" > "$STUB_STATE_DIR/${target%:live}"
+    fi
+    echo "✔  Site cloned: $source → $target"
+    ;;
+  hosting:channel:list)
+    [ -n "$site" ] && [ -n "$project" ] && [ "$json" = true ] \
+      || fail "hosting:channel:list needs --site, --project and --json"
+    version=$(live_version "$site")
+    jq -n --arg site "$site" --arg project "$project" --arg version "$version" '{
+      status: "success",
+      result: {channels: [
+        {name: "projects/\($project)/sites/\($site)/channels/preview-1",
+         release: {version: {name: "sites/\($site)/versions/0000000000000000"}}},
+        {name: "projects/\($project)/sites/\($site)/channels/live",
+         url: "https://\($site).web.app",
+         release: {version: {name: "sites/\($site)/versions/\($version)"}}}
+      ]}}'
+    ;;
+  *)
+    fail "unexpected command: $cmd"
+    ;;
+esac
