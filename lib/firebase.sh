@@ -17,12 +17,15 @@ firebase_clone() {
 }
 
 # Read the version id live on a site. Sets FIREBASE_VERSION. The bundle records this rather than
-# anything inferred, so it is what a rollback can clone back.
+# anything inferred, so it is what a rollback can clone back. The firebase CLI refuses to list
+# channels outside a Firebase app directory, hence the empty firebase.json at the repo root, passed
+# with --config so the scripts work from any directory.
 firebase_live_version() {
   local site=$1
   local project=$2
   local output
-  if ! output=$(firebase hosting:channel:list --site "$site" --project "$project" --json); then
+  if ! output=$(firebase hosting:channel:list --site "$site" --project "$project" --json \
+    --config "$REPO_ROOT/firebase.json"); then
     echo "  ! Could not list the Firebase channels of $site"
     exit 1
   fi

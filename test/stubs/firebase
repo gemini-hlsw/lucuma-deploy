@@ -24,10 +24,12 @@ shift || true
 site=""
 project=""
 json=false
+config=""
 positional=()
 while [ $# -gt 0 ]; do
   case $1 in
     --site) site=$2; shift 2 ;;
+    --config) config=$2; shift 2 ;;
     --project) project=$2; shift 2 ;;
     --json) json=true; shift ;;
     -*) fail "unexpected option $1" ;;
@@ -55,6 +57,9 @@ case "$cmd" in
   hosting:channel:list)
     [ -n "$site" ] && [ -n "$project" ] && [ "$json" = true ] \
       || fail "hosting:channel:list needs --site, --project and --json"
+    # The real CLI answers "Not in a Firebase app directory" without a firebase.json.
+    [ -n "$config" ] && [ -f "$config" ] \
+      || fail "hosting:channel:list needs --config pointing at an existing firebase.json"
     version=$(live_version "$site")
     jq -n --arg site "$site" --arg project "$project" --arg version "$version" '{
       status: "success",
