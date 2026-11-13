@@ -40,6 +40,12 @@ comes from `GPP_GITHUB_TOKEN` or, when unset, from `gh auth token`. Slack messag
 The scripts write and push bundles from the checkout they live in, so before doing anything they
 check that it is on `main` with a clean tree and run `git pull --ff-only`; they abort otherwise.
 
+**Do not require pull requests or restrict who can push on `main`.** Every promotion and rollback
+ends by pushing a bundle commit straight to `main`. If that push is refused, the systems are
+deployed but the bundle is not recorded, and the Observe and Navigate servers keep reading the old
+`current.tags`. Everyone who promotes needs write access to this repo. Blocking force pushes and
+deletion of `main` is fine, and recommended, since it protects the bundle history.
+
 ## Promote
 
 ```
