@@ -71,7 +71,8 @@ nowhere else):
 | staging    | `gemini-edu-explore-test`| `E2E5A5UYD8VLF7` |
 | production | `gemini-edu-explore-prd` | `E1VDJ0RPRW1PVL` |
 
-Credentials come from the developer's environment (`AWS_PROFILE` or the default profile).
+Credentials are shared ones kept in `secrets.yaml` (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`AWS_REGION`), which direnv decrypts into the environment.
 
 Each distribution serves its bucket with origin path `/latest`, so the live site of an environment
 is `s3://<bucket>/latest/`, never the bucket root.

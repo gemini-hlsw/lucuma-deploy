@@ -1,6 +1,6 @@
 # AWS: deploying a static site from the build archive to an S3 bucket and invalidating the
-# CloudFront cache of the target. Credentials come from the environment (AWS_PROFILE or the
-# default profile).
+# CloudFront cache of the target. Credentials come from the environment: direnv exports the shared
+# AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY and AWS_REGION from secrets.yaml.
 #
 # The CI archives every build at s3://<archive bucket>/builds/<git sha>/ (see aws_archive_bucket in
 # systems.sh), so a promotion or a rollback copies that archive onto the target bucket instead of

@@ -20,18 +20,20 @@ clone:
 
 1. `direnv allow`. The first time, Nix downloads the tools, which takes a few minutes.
 2. Log in: `gh auth login`, `heroku login`, `firebase login`. `hasura` needs nothing: the
-   user-prefs instances have no admin secret.
-   AWS credentials come from your environment (`AWS_PROFILE` or the default profile) and are not
-   managed by the scripts.
+   user-prefs instances have no admin secret. `aws` needs no login either: the shared credentials
+   for the Explore buckets come from `secrets.yaml` (step 3).
 3. Put the GPP age key in the repo as `deploy-keys.txt` (gitignored). It is the same key used by
-   `secrets.yaml` in lucuma-apps, so if you already have `apps-keys.txt` there:
+   `secrets.yaml` in lucuma-apps, so if you already have the key in lucuma-apps, copy it:
    ```
-   ln -s ../lucuma-apps/apps-keys.txt deploy-keys.txt
+   cp ../lucuma-apps/apps-keys.txt deploy-keys.txt
    ```
-   Otherwise ask a team member for the key. With it in place, direnv decrypts `secrets.yaml` into
-   the environment on every `cd`, which is where `GPP_SLACK_WEBHOOK_URL` comes from.
+   A symlink works too (`ln -s ../lucuma-apps/apps-keys.txt deploy-keys.txt`) and follows the
+   lucuma-apps file if the key is ever replaced. Otherwise ask a team member for the key. With it
+   in place, direnv decrypts `secrets.yaml` into the environment on every `cd`, which is where
+   `GPP_SLACK_WEBHOOK_URL` and the AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+   `AWS_REGION`) come from.
 
-Without the dev shell, install the tools yourself and export `GPP_SLACK_WEBHOOK_URL`. GitHub auth
+Without the dev shell, install the tools yourself and export those four variables. GitHub auth
 comes from `GPP_GITHUB_TOKEN` or, when unset, from `gh auth token`. Slack messages go to channel
 `GPP_SLACK_CHANNEL` (default `#gpp`); `--skip-slack` turns them off.
 
