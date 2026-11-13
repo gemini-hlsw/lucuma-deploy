@@ -589,6 +589,59 @@ check_eq "no PATCH or POST" 0 "$(curl_calls | jq -s '[.[] | select(.method != "G
 check_eq "no bundle written" "$before_ids" "$(bundle_ids production)"
 check_eq "no commit made" "$before_head" "$(head_sha)"
 
+########## 6c. promote.sh --snapshot
+
+# A snapshot records what an environment runs without promoting anything, even while dev is ahead.
+echo "=== promote.sh --snapshot staging --dry-run"
+sleep 1
+before_head=$(head_sha)
+before_ids=$(bundle_ids staging)
+reset_logs
+if "$WORK/promote.sh" --snapshot staging --dry-run > "$TMP/snapshot-dry.out" 2>&1; then rc=0; else rc=$?; fi
+check_eq "snapshot dry-run exits 0" 0 "$rc"
+[ "$rc" = 0 ] || tail -30 "$TMP/snapshot-dry.out"
+check "snapshot dry-run prints the bundle JSON" grep -q '"schema": 1' "$TMP/snapshot-dry.out"
+check "snapshot dry-run bundle has no source" grep -q '"source": null' "$TMP/snapshot-dry.out"
+check_eq "snapshot dry-run writes no bundle" "$before_ids" "$(bundle_ids staging)"
+check_eq "snapshot dry-run makes no commit" "$before_head" "$(head_sha)"
+
+echo "=== promote.sh --snapshot staging --skip-slack"
+reset_logs
+if "$WORK/promote.sh" --snapshot staging --skip-slack > "$TMP/snapshot.out" 2>&1; then rc=0; else rc=$?; fi
+check_eq "snapshot exits 0" 0 "$rc"
+[ "$rc" = 0 ] || tail -30 "$TMP/snapshot.out"
+SNAP=$(new_bundle_id staging "$before_ids")
+check "snapshot writes one staging bundle" test -n "$SNAP"
+check_eq "snapshot bundle has no source and is no rollback" "null null" \
+  "$(bundle_get "staging/$SNAP.json" '"\(.source) \(.rollback_of)"')"
+check_eq "snapshot bundle has all systems" 9 "$(bundle_get "staging/$SNAP.json" '.systems | length')"
+check_eq "snapshot bundle has every system unchanged" "false" \
+  "$(bundle_get "staging/$SNAP.json" '[.systems[].changed] | any')"
+# The staging records changed after the last staging bundle (scenario 3), so these also show the
+# snapshot reads the records and the live sites, not the previous bundle.
+check_eq "snapshot bundle takes identifiers from the staging records" "$(images odb-stg2 "$ODB_TYPES") 20261025-dddddddd v0.16.20" \
+  "$(bundle_get "staging/$SNAP.json" '"\(.systems.Odb.docker_image_shas | tojson) \(.systems.Observe.docker_tag) \(.systems.Navigate.docker_tag)"')"
+check_eq "snapshot bundle has the staging bucket and the Explore build of the staging record" "gemini-edu-explore-test $APPS_STG2" \
+  "$(bundle_get "staging/$SNAP.json" '.systems.Explore | "\(.s3_bucket) \(.s3_build)"')"
+check_eq "snapshot bundle has the live staging Firebase version of AdminUi" "5ta9e2adminui002" \
+  "$(bundle_get "staging/$SNAP.json" '.systems.AdminUi.firebase_version')"
+check "snapshot current.json written" cmp "$WORK/bundles/staging/$SNAP.json" "$WORK/bundles/staging/current.json"
+check_eq "snapshot commit message" "bundle: staging $SNAP (snapshot)" "$(git -C "$WORK" log -1 --format=%s)"
+check_eq "snapshot commit pushed" "$(head_sha)" "$(origin_sha)"
+check_eq "snapshot deploys and records nothing" 0 "$(curl_calls | jq -s '[.[] | select(.method != "GET")] | length')"
+check "snapshot makes no AWS call" bash -c "! [ -s '$LOGS/aws.log' ]"
+check "snapshot clones nothing on Firebase" bash -c "! grep -q hosting:clone '$LOGS/firebase.log'"
+check "snapshot runs no Hasura command" bash -c "! [ -s '$LOGS/hasura.log' ]"
+check "rollback list shows the snapshot as such" bash -c "'$WORK/rollback.sh' staging 2> /dev/null | grep -q '$SNAP .* snapshot  changed: none'"
+
+echo "=== promote.sh --snapshot (bad arguments)"
+before_ids=$(bundle_ids staging)
+check "snapshot of dev is refused" bash -c "! '$WORK/promote.sh' --snapshot dev > '$TMP/snapshot-dev.out' 2>&1"
+check "snapshot of dev says why" grep -q "a snapshot can only be taken of staging or production" "$TMP/snapshot-dev.out"
+check "snapshot with two environments is refused" bash -c "! '$WORK/promote.sh' --snapshot dev staging > /dev/null 2>&1"
+check "rollback refuses --snapshot" bash -c "! '$WORK/rollback.sh' staging --snapshot > /dev/null 2>&1"
+check_eq "refused snapshots write no bundle" "$before_ids" "$(bundle_ids staging)"
+
 ########## 7. Library checks
 
 echo "=== library checks"

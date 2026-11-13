@@ -57,6 +57,18 @@ deletion of `main` is fine, and recommended, since it protects the bundle histor
 `promoteDevAllToStaging.sh` and `promoteStagingAllToProduction.sh` are shortcuts for the two
 lines above and pass extra flags through. Other flags: `--skip-slack`, `--debug`.
 
+To record what an environment runs now without promoting anything:
+
+```
+./promote.sh --snapshot staging --dry-run   # prints the bundle, writes nothing
+./promote.sh --snapshot staging             # writes, commits and pushes the bundle
+```
+
+A snapshot deploys nothing and works even when promotions are pending. Take one of `staging` and
+of `production` before the first promotion from this repo, so there is a bundle to roll back to,
+and again if an environment was ever changed by other means. It trusts the GitHub deployment
+records and the live Firebase versions: it cannot notice a deployment that left no record.
+
 Explore is hosted on AWS only (S3 + CloudFront). The build is copied from the build archive
 (`s3://gemini-edu-explore-dev/builds/<sha>/`, filled by the CI on every dev deploy) onto the `latest/`
 prefix of the target bucket, which the CloudFront distribution serves, then the CloudFront cache of

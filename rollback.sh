@@ -45,6 +45,10 @@ usage() {
 }
 
 parse_args "$@" || usage
+if [ "$SNAPSHOT" = true ]; then
+  echo "Error: --snapshot is an option of promote.sh"
+  usage
+fi
 if [ ${#POSITIONAL[@]} -lt 1 ] || [ ${#POSITIONAL[@]} -gt 2 ]; then
   usage
 fi
@@ -69,7 +73,8 @@ if [ -z "$TARGET_ID" ]; then
   while IFS= read -r file; do
     found=true
     jq -r '"  \(.id)  \(.created_at)  "
-           + (if .rollback_of != null then "rollback of \(.rollback_of)" else "from \(.source)" end)
+           + (if .rollback_of != null then "rollback of \(.rollback_of)"
+              elif .source != null then "from \(.source)" else "snapshot" end)
            + "  changed: "
            + ([.systems | to_entries[] | select(.value.changed) | .key] | if length == 0 then "none" else join(" ") end)' \
       "$file"

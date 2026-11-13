@@ -65,6 +65,12 @@ hooks). Then `test/stubs` is put first on `PATH`.
 9a. `rollback production <id>` to a planted copy of the current bundle whose only difference is an
    obsolete Explore Firebase version: nothing to roll back, because Explore is compared by
    `s3_build` alone; no AWS, Firebase or GitHub write is made.
+9b. `promote --snapshot staging`, after the staging records moved on from the last staging bundle:
+   the dry run prints a bundle with `source: null` and writes nothing; the real run writes one
+   bundle with every system unchanged and the identifiers of the staging records and live sites,
+   commits it as `bundle: staging <id> (snapshot)`, pushes, and makes no Heroku PATCH, deployment
+   POST, AWS call, Firebase clone or Hasura call; `rollback staging` lists it as a snapshot.
+   `--snapshot dev`, `--snapshot` with two environments and `rollback.sh --snapshot` are refused.
 10. Library checks: a truncated tree is an error, the retention cutoff is six months back, and
    every script passes `bash -n`.
 11. `test/servers.sh` (below), run with the real `curl` restored on `PATH`.

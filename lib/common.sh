@@ -19,6 +19,7 @@ is_valid_env() {
 parse_args() {
   DRY_RUN=false
   SKIP_SLACK=false
+  SNAPSHOT=false
   DEBUG=false
   DEBUG_CURL=()
   POSITIONAL=()
@@ -27,6 +28,7 @@ parse_args() {
     case $arg in
       --dry-run) DRY_RUN=true ;;
       --skip-slack) SKIP_SLACK=true ;;
+      --snapshot) SNAPSHOT=true ;;
       --debug)
         DEBUG=true
         DEBUG_CURL=("-v")

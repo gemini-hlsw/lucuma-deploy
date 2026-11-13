@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 
 # Usage: promote.sh <source_env> <target_env> [--dry-run] [--skip-slack] [--debug]
+#        promote.sh --snapshot <env> [--dry-run] [--skip-slack] [--debug]
 # Example: promote.sh dev staging
 # Example: promote.sh dev staging --dry-run --debug
 # Example: promote.sh dev staging --skip-slack
+# Example: promote.sh --snapshot staging
 #
 # Promotes every system whose deployment record in the source environment differs from the
 # target's, records the new deployments on GitHub, then writes a bundle (the snapshot of the target
@@ -13,6 +15,10 @@
 # `navigate update`, which deploy the tag in the environment's current bundle. This script does
 # NOT deploy them: it records the GitHub deployment, sends the Slack message and prints the
 # command the operator must run.
+#
+# With --snapshot nothing is promoted: the script only writes a bundle of what <env> runs now, so
+# that state can be rolled back to. Use it before the first promotion from this repo, or after
+# an environment was changed by other means.
 
 set -euo pipefail
 
@@ -46,29 +52,47 @@ source "$SCRIPT_DIR/lib/bundle.sh"
 
 usage() {
   echo "Usage: promote.sh <source_env> <target_env> [--dry-run] [--skip-slack] [--debug]"
+  echo "       promote.sh --snapshot <env> [--dry-run] [--skip-slack] [--debug]"
   echo "Example: promote.sh dev staging"
   echo "Example: promote.sh dev staging --dry-run"
   echo "Example: promote.sh dev staging --skip-slack"
   echo "Example: promote.sh dev staging --dry-run --skip-slack"
+  echo "Example: promote.sh --snapshot staging"
   exit 1
 }
 
 parse_args "$@" || usage
-if [ ${#POSITIONAL[@]} -ne 2 ]; then
-  usage
-fi
-SOURCE_ENV=${POSITIONAL[0]}
-TARGET_ENV=${POSITIONAL[1]}
+if [ "$SNAPSHOT" = true ]; then
+  if [ ${#POSITIONAL[@]} -ne 1 ]; then
+    usage
+  fi
+  # Reading the environment as its own source makes every system unchanged, so the bundle carries
+  # exactly what the environment's records and live sites say.
+  SOURCE_ENV=${POSITIONAL[0]}
+  TARGET_ENV=${POSITIONAL[0]}
+  # Only the environments that can be rolled back have bundles.
+  if [ "$TARGET_ENV" != staging ] && [ "$TARGET_ENV" != production ]; then
+    echo "Error: a snapshot can only be taken of staging or production"
+    echo "Provided: '$TARGET_ENV'"
+    exit 1
+  fi
+else
+  if [ ${#POSITIONAL[@]} -ne 2 ]; then
+    usage
+  fi
+  SOURCE_ENV=${POSITIONAL[0]}
+  TARGET_ENV=${POSITIONAL[1]}
 
-# Validate environment names against allowlist
-if ! is_valid_env "$SOURCE_ENV" || ! is_valid_env "$TARGET_ENV"; then
-  echo "Error: Invalid environment names. Must be one of: ${VALID_ENVS[*]}"
-  echo "Provided: SOURCE_ENV='$SOURCE_ENV', TARGET_ENV='$TARGET_ENV'"
-  exit 1
-fi
-if [ "$SOURCE_ENV" = "$TARGET_ENV" ]; then
-  echo "Error: source and target environments must differ"
-  exit 1
+  # Validate environment names against allowlist
+  if ! is_valid_env "$SOURCE_ENV" || ! is_valid_env "$TARGET_ENV"; then
+    echo "Error: Invalid environment names. Must be one of: ${VALID_ENVS[*]}"
+    echo "Provided: SOURCE_ENV='$SOURCE_ENV', TARGET_ENV='$TARGET_ENV'"
+    exit 1
+  fi
+  if [ "$SOURCE_ENV" = "$TARGET_ENV" ]; then
+    echo "Error: source and target environments must differ"
+    exit 1
+  fi
 fi
 
 require_tools git gh jq curl heroku firebase aws hasura
@@ -240,7 +264,12 @@ build_bundle() {
       bundle_add_manual "$system" "$sha" "$changed" "$tag"
     fi
   done
-  BUNDLE_JSON=$(bundle_build "$TARGET_ENV" "$SOURCE_ENV" "" "$PROMOTER" "$(migrations_json)")
+  # A snapshot has no source environment.
+  local bundle_source=$SOURCE_ENV
+  if [ "$SNAPSHOT" = true ]; then
+    bundle_source=""
+  fi
+  BUNDLE_JSON=$(bundle_build "$TARGET_ENV" "$bundle_source" "" "$PROMOTER" "$(migrations_json)")
 }
 
 record_promotion() {
@@ -393,31 +422,53 @@ show_manual_commands() {
 }
 
 # Read the live Firebase versions, build the bundle, write it, prune, commit, push and announce it.
-# Used after a promotion and to write the first bundle of an environment that has none.
+# Used after a promotion, to write the first bundle of an environment that has none, and for a
+# snapshot.
 record_bundle() {
   echo "##### Writing the $TARGET_ENV bundle"
   read_live_versions live
   build_bundle
   bundle_write "$REPO_ROOT/bundles/$TARGET_ENV" "$BUNDLE_JSON"
   bundle_prune "$REPO_ROOT" "$TARGET_ENV" "$BUNDLE_RETENTION_MONTHS"
-  bundle_commit_push "$REPO_ROOT" "$TARGET_ENV" "bundle: $TARGET_ENV $BUNDLE_ID (from $SOURCE_ENV)"
+  local origin="from $SOURCE_ENV"
+  if [ "$SNAPSHOT" = true ]; then
+    origin="snapshot"
+  fi
+  bundle_commit_push "$REPO_ROOT" "$TARGET_ENV" "bundle: $TARGET_ENV $BUNDLE_ID ($origin)"
   slack_send_text "$(bundle_slack_message "$TARGET_ENV" "$BUNDLE_ID")"
   echo
 }
 
-echo "##### Checking for changes between $SOURCE_ENV and $TARGET_ENV"
+if [ "$SNAPSHOT" = true ]; then
+  echo "##### Reading what $TARGET_ENV runs now"
+else
+  echo "##### Checking for changes between $SOURCE_ENV and $TARGET_ENV"
+fi
 echo
 
 set_system_vars
 
 echo "Preparing the Hasura migrations of Explore ${source_sha["Explore"]}..."
 hasura_prepare_checkout "${source_sha["Explore"]}"
-if check_hasura_changes "$TARGET_ENV"; then
+# A snapshot applies nothing, so pending Hasura changes are not looked for.
+if [ "$SNAPSHOT" = false ] && check_hasura_changes "$TARGET_ENV"; then
   PROMOTE_HASURA=true
 fi
 echo
 
 read_migration_numbers
+
+if [ "$SNAPSHOT" = true ]; then
+  if [ "$DRY_RUN" = true ]; then
+    echo "##### DRY RUN MODE - snapshot bundle that would be written to bundles/$TARGET_ENV/:"
+    read_live_versions live
+    build_bundle
+    echo "$BUNDLE_JSON"
+    exit 0
+  fi
+  record_bundle
+  exit 0
+fi
 
 ANY_PROMOTION=$PROMOTE_HASURA
 for system in "${all_systems[@]}"; do

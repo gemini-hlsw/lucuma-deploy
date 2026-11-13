@@ -337,6 +337,7 @@ See [TESTS.md](TESTS.md).
 
 - Flyway numbers are read at each database's own system sha (odb at Odb, sso at Sso, resource at Resource), not one shared lucuma-odb sha.
 - Promotion aborts before deploying anything if an unchanged system's target record lacks its `docker_image_shas` or `docker_tag`.
+- `promote.sh --snapshot <env>` (`staging` or `production`) writes a bundle of what the environment runs now and promotes nothing, whatever is pending: the environment is read as its own source, so every system is `changed: false` with the identifiers of its own records and live Firebase versions; `source` is `null`, the commit message ends in `(snapshot)`, and Hasura is not checked. `--dry-run` only prints it.
 - When nothing changed but `bundles/<target>/current.json` is missing, `promote.sh` writes the initial bundle (every system `changed: false`, identifiers from the target records); `--dry-run` only prints it.
 - `rollback.sh --dry-run` exits after the migration check and never asks for confirmation.
 - `rollback.sh <env>` (listing) does a best-effort `git pull --ff-only` only, not the full preflight.
