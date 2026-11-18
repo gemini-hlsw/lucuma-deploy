@@ -1,13 +1,13 @@
 {
   "schema": 1,
-  "id": "2026-11-13T20-11-15Z",
+  "id": "2026-11-18T13-31-02Z",
   "environment": "staging",
   "source": "dev",
   "rollback_of": null,
-  "created_at": "2026-11-13T20:11:15Z",
-  "created_by": "rpiaggio",
+  "created_at": "2026-11-18T13:31:02Z",
+  "created_by": "unknown",
   "migrations": {
-    "odb": 1409,
+    "odb": 1415,
     "sso": 5,
     "resource": 0,
     "user_prefs": 1792331515894
@@ -15,78 +15,78 @@
   "systems": {
     "Sso": {
       "repo": "gemini-hlsw/lucuma-odb",
-      "sha": "a295b67b61ef07caf1e707e4318af7305d15f3ef",
+      "sha": "6405fb9e49230d1b7cf855697f017019de9d0dd6",
       "changed": true,
       "heroku_app": "lucuma-sso-staging",
       "docker_image_shas": {
-        "web": "sha256:5ab5bb41dc9682589d377483b5313104d923fe49d8a722d0a5ee95dedaaaba9e"
+        "web": "sha256:d2ebca274f8bdc2b8dc3c6e0b2e2f7a256ddbd9b46674da8ed0d6bee5580e1a3"
       },
-      "backup": "b101"
+      "backup": "b102"
     },
     "Itc": {
       "repo": "gemini-hlsw/lucuma-odb",
-      "sha": "a295b67b61ef07caf1e707e4318af7305d15f3ef",
+      "sha": "6405fb9e49230d1b7cf855697f017019de9d0dd6",
       "changed": true,
       "heroku_app": "itc-staging",
       "docker_image_shas": {
-        "web": "sha256:345045329b2b0c4b3074b75eddfa2b61a52ca72e617e54e5ea06e828fb7bca34"
+        "web": "sha256:f7c73698b4a58cbfbaade7ba932118ad0f46f2f98913bd2316479f599fa838ee"
       }
     },
     "Odb": {
       "repo": "gemini-hlsw/lucuma-odb",
-      "sha": "a295b67b61ef07caf1e707e4318af7305d15f3ef",
+      "sha": "6405fb9e49230d1b7cf855697f017019de9d0dd6",
       "changed": true,
       "heroku_app": "lucuma-postgres-odb-staging",
       "docker_image_shas": {
-        "web": "sha256:f24b83bba0856bbf2c4a8569cc6b7ea307e45bc93fb67243c04338ef06f884bc",
-        "calibration": "sha256:07c2cdc91fd4dc74a51a66bc1e3bb6c1846bea60a633e8b8c14ccbdbdff327e4",
-        "obscalc": "sha256:c75ffebd49cb22c080343a0f68804f0b8b371ddb466d0e390ada5e290a81f07d",
-        "pdfsummary": "sha256:405c61e672883ce30f4717e580d056f57c8bc1ced5f840b35ad6644c3ed2efe9"
+        "web": "sha256:967984a36ec57d299d3c0c81b4e3f5f0d160bd36fac0bfd63e18a7ca92ebb111",
+        "calibration": "sha256:2a949bbf89394fcdb9df1d65febd042e77b9af55ba04b10da57af88aae2b9f7d",
+        "obscalc": "sha256:ebe081b76c25e85a5f214d1d0c30101de664a3156e0e8c8037b706ecc5f0aed4",
+        "pdfsummary": "sha256:872faa083cfe590cd3aa4ae5a3bfaaaf0baeb65f89d7a5d62c8f8937194200a4"
       },
-      "backup": "b1193"
+      "backup": "b1211"
     },
     "Resource": {
       "repo": "gemini-hlsw/lucuma-odb",
-      "sha": "a295b67b61ef07caf1e707e4318af7305d15f3ef",
+      "sha": "6405fb9e49230d1b7cf855697f017019de9d0dd6",
       "changed": true,
       "heroku_app": "lucuma-resource-staging",
       "docker_image_shas": {
-        "web": "sha256:ff7f395e5bcc7d5aaefa7310b5f4e3e749b2303b247d078885cd6e1ebb7f4153"
+        "web": "sha256:2313f7c33996f09be7252da788889b48bfd1a89c16114dd124035594bf3625a5"
       }
     },
     "Explore": {
       "repo": "gemini-hlsw/lucuma-apps",
-      "sha": "6ce52f4d7cdd547ea8c684dd675b0d221dd17999",
+      "sha": "68a9ee345dc0a19e362b084a0033d7414f597e0b",
       "changed": true,
       "s3_bucket": "gemini-edu-explore-test",
       "cloudfront_distribution": "E2E5A5UYD8VLF7",
-      "s3_build": "6ce52f4d7cdd547ea8c684dd675b0d221dd17999"
+      "s3_build": "68a9ee345dc0a19e362b084a0033d7414f597e0b"
     },
     "ResourceUi": {
       "repo": "gemini-hlsw/lucuma-ts",
-      "sha": "59f8ce231fb4812b0a7131d3750626a53aea164e",
+      "sha": "bfd23c3ebf6610734cf223f14af3edfeadb08409",
       "changed": true,
       "firebase_site": "resource-ae0b7-staging",
-      "firebase_version": "c7aa6a4d2c116e94"
+      "firebase_version": "c726e8fe3cb90772"
     },
     "AdminUi": {
       "repo": "gemini-hlsw/lucuma-ts",
-      "sha": "59f8ce231fb4812b0a7131d3750626a53aea164e",
+      "sha": "bfd23c3ebf6610734cf223f14af3edfeadb08409",
       "changed": true,
       "firebase_site": "admin-679f7-staging",
-      "firebase_version": "c24eca501fc8aa90"
+      "firebase_version": "a40d6d43f0272a91"
     },
     "Observe": {
       "repo": "gemini-hlsw/lucuma-apps",
-      "sha": "3aedfdb0a1ca4f9981c9850c50e1ace80a397c3a",
+      "sha": "68a9ee345dc0a19e362b084a0033d7414f597e0b",
       "changed": true,
-      "docker_tag": "20261113-3aedfdb0"
+      "docker_tag": "20261118-68a9ee34"
     },
     "Navigate": {
       "repo": "gemini-hlsw/lucuma-ts",
-      "sha": "2605c661db71e34c276b063fcc8a4f84ea0915cd",
-      "changed": false,
-      "docker_tag": "v0.16.26"
+      "sha": "a5123b1cac11bba93ffebf5df8220292ed662233",
+      "changed": true,
+      "docker_tag": "v0.16.27"
     }
   }
 }
